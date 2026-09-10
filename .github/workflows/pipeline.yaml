@@ -1,40 +1,28 @@
 name: Terraform CI/CD
 
 on:
-
-  # ==========================================
-  # FEATURE BRANCH
-  # ==========================================
   push:
     branches:
       - "feature/**"
 
-  # ==========================================
-  # PR REVIEW
-  # ==========================================
   pull_request_review:
     types:
       - submitted
 
-  # ==========================================
-  # PR MERGED INTO MAIN
-  # ==========================================
   pull_request:
     types:
       - closed
     branches:
       - main
 
-
 permissions:
   contents: read
-
 
 jobs:
 
   # ============================================================
   # 1. FEATURE BRANCH
-  # Init + Validate + Plan
+  # Runs: Init + Validate + Plan
   # ============================================================
   terraform-feature:
     name: Terraform Plan - Feature Branch
@@ -46,7 +34,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -56,11 +43,13 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          auth-type: SERVICE_PRINCIPAL
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
 
       - name: Terraform Init
         run: terraform init
@@ -73,8 +62,8 @@ jobs:
 
 
   # ============================================================
-  # 2. APPROVED PR
-  # Init + Validate + Plan
+  # 2. APPROVED PR TO MAIN
+  # Runs only after PR approval
   # ============================================================
   terraform-approved-pr:
     name: Terraform Plan - Approved PR
@@ -87,7 +76,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout PR Code
         uses: actions/checkout@v4
         with:
@@ -99,11 +87,13 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          auth-type: SERVICE_PRINCIPAL
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
 
       - name: Terraform Init
         run: terraform init
@@ -116,8 +106,7 @@ jobs:
 
 
   # ============================================================
-  # 3. APPLY
-  # ONLY AFTER PR IS MERGED INTO MAIN
+  # 3. APPLY AFTER PR MERGED INTO MAIN
   # ============================================================
   terraform-apply:
     name: Terraform Apply - Main
@@ -131,7 +120,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Main
         uses: actions/checkout@v4
         with:
@@ -143,11 +131,13 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          auth-type: SERVICE_PRINCIPAL
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
 
       - name: Terraform Init
         run: terraform init
@@ -155,5 +145,8 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
+      - name: Terraform Plan Before Apply
+        run: terraform plan -out=tfplan
+
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
