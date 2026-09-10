@@ -1,4 +1,4 @@
-resource "azurerm_resource_group" "example12" {
-  name     = "rg-terraform-manual12"
+resource "azurerm_resource_group" "myRG" {
+  name     = "rg-terraform"
   location = "East US"
 }
