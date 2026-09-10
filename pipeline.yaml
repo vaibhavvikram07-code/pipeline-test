@@ -1,48 +1,83 @@
-trigger:
+name: Terraform CI
 
-- main
+on:
+  push:
+    branches:
+      - 'feature/**'
 
-pool:
+  pull_request_review:
+    types:
+      - submitted
 
-vmImage: 'ubuntu-latest'
+permissions:
+  contents: read
+  id-token: write
 
-steps:
+jobs:
 
-# Terraform Install
+  # ============================================================
+  # FEATURE BRANCH
+  # terraform init + terraform plan
+  # ============================================================
+  feature-plan:
+    name: Terraform Plan - Feature Branch
+    runs-on: ubuntu-latest
 
-- task: TerraformInstaller@1
+    if: startsWith(github.ref, 'refs/heads/feature/')
 
-inputs:
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-terraformVersion: 'latest'
-# Terraform Init
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-- script: |
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-cd pipeline-test
+      - name: Terraform Init
+        run: terraform init
 
-terraform init
+      - name: Terraform Plan
+        run: terraform plan
 
-displayName: 'Terraform Init'
 
-# Terraform Validate
+  # ============================================================
+  # PR TO MAIN + APPROVED
+  # terraform init + terraform plan
+  # ============================================================
+  approved-pr-plan:
+    name: Terraform Plan - Approved PR
+    runs-on: ubuntu-latest
 
-- script: |
+    if: >
+      github.event_name == 'pull_request_review' &&
+      github.event.action == 'submitted' &&
+      github.event.review.state == 'approved' &&
+      github.event.pull_request.base.ref == 'main'
 
-cd pipeline-test
+    steps:
+      - name: Checkout PR Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
-terraform validate
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-displayName: 'Terraform Validate'
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-# Terraform Plan
+      - name: Terraform Init
+        run: terraform init
 
-- script: |
-
-cd pipeline-test
-
-terraform plan -out=tfplan
-
-displayName: 'Terraform Plan'
-
-# Terraform Apply
+      - name: Terraform Plan
+        run: terraform plan
